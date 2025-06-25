@@ -52,6 +52,13 @@ class VersionBumper:
 
     def set_version(self, new_version: str) -> None:
         """Update version in pyproject.toml."""
+        current_version = self.get_current_version()
+
+        # If version is the same, no need to update
+        if current_version == new_version:
+            print(f"✅ Version is already {new_version}")
+            return
+
         # Read current content
         content = self.pyproject_path.read_text()
 
@@ -81,7 +88,7 @@ class VersionBumper:
 
         # Write back
         self.pyproject_path.write_text(new_content)
-        print(f"✅ Updated version to {new_version} in pyproject.toml")
+        print(f"✅ Updated version from {current_version} to {new_version} in pyproject.toml")
 
     def run_command(self, cmd: str, check: bool = True) -> subprocess.CompletedProcess:
         """Run a shell command."""
@@ -146,6 +153,12 @@ class VersionBumper:
 
         print(f"📦 Current version: {current_version}")
         print(f"📦 New version: {new_version}")
+
+        if current_version == new_version:
+            print("ℹ️  Version is already at target. No changes needed.")
+            if dry_run:
+                print("🔍 Dry run - no changes made")
+            return new_version
 
         if dry_run:
             print("🔍 Dry run - no changes made")
