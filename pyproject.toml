@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "snowflake-sql-api-async"
-version = "0.0.1"
+version = "0.0.2"
 description = "Async library for querying Snowflake using SQL API."
 readme = "README.md"
 authors = [{ name = "Jasper Chan", email = "jasper@neonblue.ai" }]
