@@ -19,7 +19,6 @@ from typing import (
     Union,
     Tuple,
     TypedDict,
-    Annotated,
 )
 import uuid
 from cryptography.hazmat.primitives.serialization import (
@@ -30,7 +29,6 @@ from cryptography.hazmat.primitives.serialization import (
 )
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 import base64
-from getpass import getpass
 import hashlib
 import logging
 import sys
@@ -95,11 +93,6 @@ class StatementParams(TypedDict, total=False):
     use_cached_result: bool
 
 
-def get_private_key_passphrase() -> str:
-    """Prompts the user for the private key passphrase."""
-    return getpass("Passphrase for private key: ")
-
-
 class JWTGenerator(object):
     """
     Creates and signs a JWT.
@@ -110,17 +103,17 @@ class JWTGenerator(object):
     ALGORITHM = "RS256"
 
     def __init__(
-        self,
-        account: Text,
-        user: Text,
-        private_key: Optional[bytes] = None,
-        private_key_file_path: Optional[Text] = None,
-        private_key_passphrase: Optional[Text] = None,
-        lifetime: timedelta = LIFETIME,
-        renewal_delay: timedelta = RENEWAL_DELTA,
+            self,
+            account: Text,
+            user: Text,
+            private_key: Optional[bytes] = None,
+            private_key_file_path: Optional[Text] = None,
+            private_key_passphrase: Optional[Text] = None,
+            lifetime: timedelta = LIFETIME,
+            renewal_delay: timedelta = RENEWAL_DELTA,
     ):
         if not (private_key_file_path or private_key) or (
-            private_key_file_path and private_key
+                private_key_file_path and private_key
         ):
             raise ValueError(
                 "Provide either 'private_key' or 'private_key_file_path', but not both."
@@ -227,16 +220,16 @@ class Connection:
     """
 
     def __init__(
-        self,
-        account: str,
-        user: str,
-        private_key: Optional[bytes] = None,
-        private_key_file_path: Optional[str] = None,
-        private_key_passphrase: Optional[str] = None,
-        role: Optional[str] = None,
-        warehouse: Optional[str] = None,
-        database: Optional[str] = None,
-        schema: Optional[str] = None,
+            self,
+            account: str,
+            user: str,
+            private_key: Optional[bytes] = None,
+            private_key_file_path: Optional[str] = None,
+            private_key_passphrase: Optional[str] = None,
+            role: Optional[str] = None,
+            warehouse: Optional[str] = None,
+            database: Optional[str] = None,
+            schema: Optional[str] = None,
     ):
         """Initializes the Connection wrapper for the Snowflake SQL API."""
         self.account = account
@@ -271,11 +264,11 @@ class Connection:
         return self._http_client
 
     async def _make_request(
-        self,
-        method: str,
-        endpoint: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+            self,
+            method: str,
+            endpoint: str,
+            json_data: Optional[Dict[str, Any]] = None,
+            params: Optional[Dict[str, Any]] = None,
     ) -> aiohttp.ClientResponse:
         """
         Makes an async HTTP request and returns the full response object.
@@ -297,7 +290,7 @@ class Connection:
         )
 
     async def _process_and_fetch_partitions(
-        self, final_response_json: Dict[str, Any], statement_handle: str
+            self, final_response_json: Dict[str, Any], statement_handle: str
     ) -> List[Dict[str, Any]]:
         """
         Processes a final query response, fetches all partitions, and combines them.
@@ -330,7 +323,7 @@ class Connection:
         return all_results
 
     async def _fetch_single_partition(
-        self, statement_handle: str, partition_index: int
+            self, statement_handle: str, partition_index: int
     ) -> List[List[Any]]:
         """Fetches and returns the data for a single result partition."""
         logger.debug(f"Fetching partition {partition_index}...")
@@ -343,12 +336,12 @@ class Connection:
             return partition_json.get("data", [])
 
     async def execute_query(
-        self,
-        sql_text: str,
-        params: Optional[Sequence[Any]] = None,
-        statement_params: Optional[StatementParams] = None,
-        timeout_seconds: int = 300,
-        poll_interval: int = 1,
+            self,
+            sql_text: str,
+            params: Optional[Sequence[Any]] = None,
+            statement_params: Optional[StatementParams] = None,
+            timeout_seconds: int = 300,
+            poll_interval: int = 1,
     ) -> List[Dict[str, Any]]:
         """
         Executes a SQL query, handles the 202 polling fallback, and fetches all partitions.
@@ -461,10 +454,10 @@ class Connection:
                 raise RuntimeError("Failed to obtain a final query result.")
 
         except (
-            aiohttp.ClientError,
-            json.JSONDecodeError,
-            RuntimeError,
-            asyncio.TimeoutError,
+                aiohttp.ClientError,
+                json.JSONDecodeError,
+                RuntimeError,
+                asyncio.TimeoutError,
         ) as e:
             logger.error(f"Error during query execution: {e}", exc_info=True)
             raise
@@ -476,8 +469,8 @@ class Connection:
         logger.info("Snowflake SQL API client 'connection' has been closed.")
 
     def _get_snowflake_type_and_binding(
-        self,
-        v: Union[Tuple[str, Any], Any],
+            self,
+            v: Union[Tuple[str, Any], Any],
     ) -> TypeAndBinding:
         if isinstance(v, tuple):
             if len(v) != 2:
@@ -498,8 +491,8 @@ class Connection:
         )
 
     def _process_params_qmarks(
-        self,
-        params: Optional[Sequence[Any]],
+            self,
+            params: Optional[Sequence[Any]],
     ) -> Optional[Dict[str, Dict[str, Any]]]:
         """
         Modified from snowflake-connector-python to process 'qmark' style bindings.
@@ -537,16 +530,16 @@ class Connection:
 
 
 def connect(
-    account: str,
-    user: str,
-    private_key: Optional[bytes] = None,
-    private_key_path: Optional[str] = None,
-    private_key_passphrase: Optional[str] = None,
-    role: Optional[str] = None,
-    warehouse: Optional[str] = None,
-    database: Optional[str] = None,
-    schema: Optional[str] = None,
-    **kwargs: Any,
+        account: str,
+        user: str,
+        private_key: Optional[bytes] = None,
+        private_key_path: Optional[str] = None,
+        private_key_passphrase: Optional[str] = None,
+        role: Optional[str] = None,
+        warehouse: Optional[str] = None,
+        database: Optional[str] = None,
+        schema: Optional[str] = None,
+        **kwargs: Any,
 ) -> Connection:
     """Establishes a logical 'connection' by initializing the SQL API client."""
     if private_key_path and not os.path.exists(private_key_path):

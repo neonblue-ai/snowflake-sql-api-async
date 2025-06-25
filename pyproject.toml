@@ -8,10 +8,10 @@ version = "0.0.1"
 description = "Async library for querying Snowflake using SQL API."
 readme = "README.md"
 authors = [{ name = "Jasper Chan", email = "jasper@neonblue.ai" }]
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 requires-python = ">=3.8"
@@ -35,8 +35,10 @@ dev = [
     "isort>=5.10.0",
     "mypy>=1.0.0",
     "flake8>=5.0.0",
+    "build>=0.10.0",
+    "twine>=4.0.0",
+    "tomli>=2.0.0; python_version<'3.11'",
 ]
-
 [tool.black]
 line-length = 88
 target-version = ['py38']
