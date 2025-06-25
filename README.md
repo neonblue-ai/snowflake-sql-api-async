@@ -15,7 +15,7 @@ A Python library for asynchronous interaction with Snowflake using the SQL API a
 ## Installation
 
 ```bash
-pip install your-snowflake-library
+pip install snowflake-sql-api-async
 ```
 
 ### Requirements
@@ -32,7 +32,7 @@ pip install your-snowflake-library
 
 ```python
 import asyncio
-from your_library import connect
+from snowflake_sql_api_async import connect
 
 async def main():
     # Connect using private key file
@@ -98,7 +98,7 @@ results = await conn.execute_query(
 ### Statement Parameters
 
 ```python
-from your_library import StatementParams
+from snowflake_sql_api_async import StatementParams
 
 # Configure query execution parameters
 statement_params: StatementParams = {
@@ -234,7 +234,7 @@ pip install -e ".[dev]"
 pytest
 
 # Run with coverage
-pytest --cov=your_library
+pytest --cov=snowflake_sql_api_async
 ```
 
 ### Code Formatting
@@ -245,7 +245,7 @@ black .
 isort .
 
 # Type checking
-mypy your_library/
+mypy snowflake_sql_api_async/
 ```
 
 ## Contributing
@@ -272,6 +272,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Support
 
 For issues and questions:
-- Check the [GitHub Issues](https://github.com/username/your-snowflake-library/issues)
+- Check the [GitHub Issues](https://github.com/username/snowflake-sql-api-async/issues)
 - Review Snowflake's [SQL API documentation](https://docs.snowflake.com/en/developer-guide/sql-api/index.html)
 - Consult the [Snowflake Python connector documentation](https://docs.snowflake.com/en/user-guide/python-connector.html)
