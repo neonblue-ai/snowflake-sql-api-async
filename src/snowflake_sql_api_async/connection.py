@@ -230,6 +230,7 @@ class Connection:
             warehouse: Optional[str] = None,
             database: Optional[str] = None,
             schema: Optional[str] = None,
+            concurrent_partition_requests: Optional[int] = 50
     ):
         """Initializes the Connection wrapper for the Snowflake SQL API."""
         self.account = account
@@ -241,6 +242,7 @@ class Connection:
         self.base_url = (
             f"https://{self.account}.snowflakecomputing.com/api/v2/statements"
         )
+        self.concurrent_partition_requests = concurrent_partition_requests
         self._jwt_generator = JWTGenerator(
             account=self.account,
             user=self.user,
@@ -249,7 +251,7 @@ class Connection:
             private_key_passphrase=private_key_passphrase,
         )
         self._http_client: Optional[aiohttp.ClientSession] = None
-        self._client_timeout = aiohttp.ClientTimeout(total=360.0)  # Increased timeout
+        self._client_timeout = aiohttp.ClientTimeout(total=360.0)
         self.converter = SnowflakeConverter()
         logger.info("Snowflake connection (SQL API wrapper) initialized successfully.")
 
@@ -294,31 +296,37 @@ class Connection:
     ) -> List[Dict[str, Any]]:
         """
         Processes a final query response, fetches all partitions, and combines them.
+        Uses a semaphore to limit concurrency and avoid overwhelming the network.
         """
         all_results = []
         meta = final_response_json.get("resultSetMetaData", {})
         column_names = [col["name"] for col in meta.get("rowType", [])]
 
+        # Process the first partition, which is included in the main response
         initial_data = final_response_json.get("data", [])
         all_results.extend([dict(zip(column_names, row)) for row in initial_data])
 
         partitions = meta.get("partitionInfo")
         if partitions and len(partitions) > 1:
             logger.info(
-                f"Result set is partitioned into {len(partitions)} chunks. Fetching all."
+                f"Result set is partitioned into {len(partitions)} chunks. Fetching all with {self.concurrent_partition_requests} concurrency."
             )
 
-            partition_tasks = [
-                self._fetch_single_partition(statement_handle, i)
-                for i in range(1, len(partitions))
-            ]
+            # Use a semaphore to limit the number of concurrent partition fetches
+            CONCURRENCY_LIMIT = self.concurrent_partition_requests
+            semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
 
-            partition_results = await asyncio.gather(*partition_tasks)
+            async def fetch_with_semaphore(partition_index: int):
+                async with semaphore:
+                    return await self._fetch_single_partition(statement_handle, partition_index)
+
+            # The first partition (index 0) is already included, so create tasks for the rest
+            tasks = [fetch_with_semaphore(i) for i in range(1, len(partitions))]
+
+            partition_results = await asyncio.gather(*tasks)
 
             for partition_data in partition_results:
-                all_results.extend([
-                    dict(zip(column_names, row)) for row in partition_data
-                ])
+                all_results.extend([dict(zip(column_names, row)) for row in partition_data])
 
         return all_results
 
@@ -351,6 +359,7 @@ class Connection:
             params: An optional sequence of parameters to bind to the placeholders in the SQL.
             statement_params: An optional dictionary of session parameters to set for the statement.
             timeout_seconds: The total time to wait for the query to complete.
+            poll_interval: The number of seconds to wait between polling for query status.
 
         Returns:
             A list of dictionaries, where each dictionary represents a row.
@@ -379,7 +388,7 @@ class Connection:
         try:
             submit_response = await self._make_request(
                 "POST",
-                f"?async=true&requestId={request_id}",
+                f"?requestId={request_id}",
                 json_data=statement_payload,
             )
 
@@ -419,7 +428,8 @@ class Connection:
                                 logger.info("Polling successful. Query finished.")
                                 final_response_json = status_json
                                 break
-                            elif code == "090004":  # Query is still running
+                            # Handle codes indicating the query is still running
+                            elif code in ("090004", "333334"):
                                 logger.debug("Query still running. Waiting...")
                                 await asyncio.sleep(poll_interval)
                             else:
@@ -507,12 +517,12 @@ class Connection:
                 all_param_data = list(map(self._get_snowflake_type_and_binding, v))
 
                 # Use the type of the first element for the array, assuming homogeneity
-                first_type = "TEXT"  # Default
+                first_type = "TEXT"
                 if all_param_data:
                     first_type = all_param_data[0].type
 
                 processed_params[str(idx + 1)] = {
-                    "type": f"{first_type}_ARRAY",  # Snowflake API expects type name with _ARRAY suffix
+                    "type": f"{first_type}_ARRAY",
                     "value": [param_data.binding for param_data in all_param_data],
                 }
             else:
