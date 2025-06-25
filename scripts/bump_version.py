@@ -55,12 +55,28 @@ class VersionBumper:
         # Read current content
         content = self.pyproject_path.read_text()
 
-        # Replace version line
-        pattern = r'^version = "[^"]*"'
+        # Replace version line - handle both quoted and unquoted values
+        patterns = [
+            r'^version = "[^"]*"',  # version = "0.0.1"
+            r"^version = '[^']*'",  # version = '0.0.1'
+            r'^version = [^\s#]*',  # version = 0.0.1 (unquoted)
+        ]
+
         replacement = f'version = "{new_version}"'
-        new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+        new_content = content
+
+        for pattern in patterns:
+            new_content = re.sub(pattern, replacement, new_content, flags=re.MULTILINE)
+            if new_content != content:
+                break
 
         if content == new_content:
+            # Debug: show what we're looking for
+            print(f"Debug: Content around version line:")
+            lines = content.split('\n')
+            for i, line in enumerate(lines):
+                if 'version' in line and '=' in line:
+                    print(f"  Line {i+1}: {repr(line)}")
             raise RuntimeError("Failed to update version in pyproject.toml")
 
         # Write back
@@ -217,6 +233,26 @@ Examples:
     except Exception as e:
         print(f"❌ Error: {e}")
         sys.exit(1)
+
+
+# Shortcuts for console scripts
+def patch_shortcut():
+    """Shortcut for patch version bump."""
+    import sys
+    sys.argv = [sys.argv[0], "patch"]
+    main()
+
+def minor_shortcut():
+    """Shortcut for minor version bump."""
+    import sys
+    sys.argv = [sys.argv[0], "minor"]
+    main()
+
+def major_shortcut():
+    """Shortcut for major version bump."""
+    import sys
+    sys.argv = [sys.argv[0], "major"]
+    main()
 
 
 if __name__ == "__main__":
