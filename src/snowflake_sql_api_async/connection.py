@@ -33,15 +33,7 @@ import hashlib
 import logging
 import sys
 
-# Configure a logger for the JWTGenerator and the Connection class
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-if not logger.handlers:
-    handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.propagate = False
 
 
 class StatementParams(TypedDict, total=False):
@@ -119,7 +111,7 @@ class JWTGenerator(object):
                 "Provide either 'private_key' or 'private_key_file_path', but not both."
             )
 
-        logger.info(
+        logger.debug(
             "Creating JWTGenerator for account '%s' and user '%s'", account, user
         )
         self.account = self._prepare_account_name_for_jwt(account)
@@ -179,7 +171,7 @@ class JWTGenerator(object):
         """Generates or returns a cached JWT."""
         now = datetime.now(timezone.utc)
         if self.token is None or self.renew_time <= now:
-            logger.info("Generating a new JWT.")
+            logger.debug("Generating a new JWT.")
             self.renew_time = now + self.renewal_delay
             public_key_fp = self._calculate_public_key_fingerprint(self.private_key)
 
@@ -253,7 +245,7 @@ class Connection:
         self._http_client: Optional[aiohttp.ClientSession] = None
         self._client_timeout = aiohttp.ClientTimeout(total=360.0)
         self.converter = SnowflakeConverter()
-        logger.info("Snowflake connection (SQL API wrapper) initialized successfully.")
+        logger.debug("Snowflake connection (SQL API wrapper) initialized successfully.")
 
     def _generate_jwt_token(self) -> str:
         """Delegates JWT token generation."""
@@ -308,7 +300,7 @@ class Connection:
 
         partitions = meta.get("partitionInfo")
         if partitions and len(partitions) > 1:
-            logger.info(
+            logger.debug(
                 f"Result set is partitioned into {len(partitions)} chunks. Fetching all with {self.concurrent_partition_requests} concurrency."
             )
 
@@ -383,7 +375,7 @@ class Connection:
         if statement_params:
             statement_payload["parameters"] = statement_params
 
-        logger.info(f"Submitting query (Request ID: {request_id}): {sql_text[:100]}...")
+        logger.debug(f"Submitting query (Request ID: {request_id}): {sql_text[:100]}...")
 
         try:
             submit_response = await self._make_request(
@@ -407,7 +399,7 @@ class Connection:
                     )
 
                 if submit_response.status == 202:
-                    logger.info(
+                    logger.debug(
                         f"Query running (202 Accepted). Polling status for handle: {statement_handle}"
                     )
                     start_time = time.time()
@@ -425,7 +417,7 @@ class Connection:
                             code = status_json.get("code")
 
                             if code == "090001":  # Query has completed successfully
-                                logger.info("Polling successful. Query finished.")
+                                logger.debug("Polling successful. Query finished.")
                                 final_response_json = status_json
                                 break
                             # Handle codes indicating the query is still running
@@ -448,7 +440,7 @@ class Connection:
                         )
 
                 elif submit_response.status == 200:
-                    logger.info("Query completed immediately (200 OK).")
+                    logger.debug("Query completed immediately (200 OK).")
                     final_response_json = response_json
 
                 else:
@@ -476,7 +468,7 @@ class Connection:
         """Closes the underlying HTTP client."""
         if self._http_client and not self._http_client.closed:
             await self._http_client.close()
-        logger.info("Snowflake SQL API client 'connection' has been closed.")
+        logger.info(f"Snowflake SQL API client connection to {self.account} has been closed.")
 
     def _get_snowflake_type_and_binding(
             self,
@@ -533,9 +525,10 @@ class Connection:
                     "type": snowflake_type,
                     "value": snowflake_binding,
                 }
+
         if logger.getEffectiveLevel() <= logging.DEBUG:
-            for k, v_dict in processed_params.items():
-                logger.debug("idx: %s, type: %s", k, v_dict.get("type"))
+            logger.debug(f"Params {params} -> {processed_params}")
+
         return processed_params
 
 
